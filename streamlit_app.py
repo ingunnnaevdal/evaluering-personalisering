@@ -14,7 +14,7 @@ password = os.getenv("MONGODB_PASSWORD")
 uri = f"mongodb+srv://ingunn:{password}@samiaeval.2obnm.mongodb.net/?retryWrites=true&w=majority&tlsAllowInvalidCertificates=true"
 
 client = MongoClient(uri, server_api=ServerApi('1'))
-evaluering_kolleksjon = client['SamiaEvalDB']['evalueringer']
+evaluering_kolleksjon = client['SamiaEvalDB']['personalisering_evaluering']
 
 bruker_id = st.text_input("Skriv inn ditt navn eller ID:", key="bruker_id")
 if not bruker_id:
