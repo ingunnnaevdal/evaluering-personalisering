@@ -1,151 +1,84 @@
 import streamlit as st
 import pandas as pd
-import math
-from pathlib import Path
+import os
+import json
+import random
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
+from dotenv import load_dotenv
 
-# Set the title and favicon that appear in the Browser's tab bar.
-st.set_page_config(
-    page_title='GDP dashboard',
-    page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
-)
+st.set_page_config(layout="wide")
 
-# -----------------------------------------------------------------------------
-# Declare some useful functions.
+load_dotenv()
+password = os.getenv("MONGODB_PASSWORD")
+uri = f"mongodb+srv://ingunn:{password}@samiaeval.2obnm.mongodb.net/?retryWrites=true&w=majority&tlsAllowInvalidCertificates=true"
 
-@st.cache_data
-def get_gdp_data():
-    """Grab GDP data from a CSV file.
+client = MongoClient(uri, server_api=ServerApi('1'))
+evaluering_kolleksjon = client['SamiaEvalDB']['evalueringer']
 
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
-    """
+bruker_id = st.text_input("Skriv inn ditt navn eller ID:", key="bruker_id")
+if not bruker_id:
+    st.stop()
 
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
+def lagre_evaluering_mongodb(kolleksjon, evaluering):
+    """Lagrer evalueringer i MongoDB."""
+    try:
+        kolleksjon.insert_one(evaluering)
+        st.success("Evaluering lagret!")
+    except Exception as e:
+        st.error(f"Feil under lagring i MongoDB: {e}")
 
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
+def les_datasett(filsti):
+    return pd.read_csv(filsti)
 
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
-    )
+st.title("Evaluering av sammendrag")
 
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
+filsti = 'data.csv'
+data = les_datasett(filsti)
 
-    return gdp_df
+if f'artikkel_indeks_{bruker_id}' not in st.session_state:
+    bruker_evaluering = evaluering_kolleksjon.find_one({'bruker_id': bruker_id}, sort=[('_id', -1)])
+    st.session_state[f'artikkel_indeks_{bruker_id}'] = bruker_evaluering['artikkel_indeks'] + 1 if bruker_evaluering else 0
 
-gdp_df = get_gdp_data()
+start_indeks = st.session_state[f'artikkel_indeks_{bruker_id}']
+if start_indeks >= len(data):
+    st.success("Alle artikler er evaluert!")
+    st.stop()
 
-# -----------------------------------------------------------------------------
-# Draw the actual page
+row = data.iloc[start_indeks]
 
-# Set the title that appears at the top of the page.
-'''
-# :earth_americas: GDP dashboard
+st.header(f"Artikkel {start_indeks + 1}/{len(data)}")
+st.subheader("Artikkeltekst:")
+st.write(row['artikkeltekst_clean'])
 
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
-'''
+if f"valgte_sammendrag_{bruker_id}_{start_indeks}" not in st.session_state:
+    sammendrag_liste = [(col.replace('prompt_', ''), row[col]) for col in row.index if 'prompt' in col]
+    random.shuffle(sammendrag_liste)
+    st.session_state[f"valgte_sammendrag_{bruker_id}_{start_indeks}"] = sammendrag_liste[:3]
 
-# Add some spacing
-''
-''
+valgte_sammendrag = st.session_state[f"valgte_sammendrag_{bruker_id}_{start_indeks}"]
 
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
+st.subheader("Sammendrag:")
+sammendrag_valg = []
+for i, (kilde, tekst) in enumerate(valgte_sammendrag):
+    with st.expander(f"Sammendrag {i + 1}"):
+        st.write(tekst)
+        sammendrag_valg.append(f"Sammendrag {i + 1}")
 
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
-    min_value=min_value,
-    max_value=max_value,
-    value=[min_value, max_value])
+beste_sammendrag = st.radio("Hvilket sammendrag foretrekker du?", sammendrag_valg + ["Ingen"], index=len(sammendrag_valg), key=f"beste_sammendrag_{bruker_id}_{start_indeks}")
+kommentar = st.text_area("Kommentar:", key=f"kommentar_{bruker_id}_{start_indeks}")
 
-countries = gdp_df['Country Code'].unique()
-
-if not len(countries):
-    st.warning("Select at least one country")
-
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
-
-''
-''
-''
-
-# Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
-]
-
-st.header('GDP over time', divider='gray')
-
-''
-
-st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
-)
-
-''
-''
-
-
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
-
-st.header(f'GDP in {to_year}', divider='gray')
-
-''
-
-cols = st.columns(4)
-
-for i, country in enumerate(selected_countries):
-    col = cols[i % len(cols)]
-
-    with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-
-        if math.isnan(first_gdp):
-            growth = 'n/a'
-            delta_color = 'off'
-        else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
-
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
-        )
+if st.button("Lagre evaluering", key=f"lagre_{bruker_id}_{start_indeks}"):
+    valgt_kilde = None if beste_sammendrag == "Ingen" else valgte_sammendrag[sammendrag_valg.index(beste_sammendrag)][0]
+    evaluering = {
+        'bruker_id': bruker_id,
+        'artikkel_indeks': start_indeks,
+        'uuid': row['uuid'],
+        'foretrukket_sammendrag': valgt_kilde if valgt_kilde else 'Ingen',
+        'sammendrag_kilder': [kilde for kilde, _ in valgte_sammendrag],
+        'kommentar': kommentar
+    }
+    lagre_evaluering_mongodb(evaluering_kolleksjon, evaluering)
+    
+    st.session_state[f'artikkel_indeks_{bruker_id}'] += 1
+    st.rerun()
