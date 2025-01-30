@@ -59,22 +59,23 @@ if f"valgte_sammendrag_{bruker_id}_{start_indeks}" not in st.session_state:
 valgte_sammendrag = st.session_state[f"valgte_sammendrag_{bruker_id}_{start_indeks}"]
 
 st.subheader("Sammendrag:")
-sammendrag_valg = []
+rankings = {}
+ranking_options = ["Best", "Middels", "Dårligst"]
+
 for i, (kilde, tekst) in enumerate(valgte_sammendrag):
     with st.expander(f"Sammendrag {i + 1}"):
         st.write(tekst)
-        sammendrag_valg.append(f"Sammendrag {i + 1}")
+        rankings[kilde] = st.selectbox(
+            f"Ranger sammendrag {i + 1}", ranking_options, key=f"ranking_{bruker_id}_{start_indeks}_{i}")
 
-beste_sammendrag = st.radio("Hvilket sammendrag foretrekker du?", sammendrag_valg + ["Ingen"], index=len(sammendrag_valg), key=f"beste_sammendrag_{bruker_id}_{start_indeks}")
 kommentar = st.text_area("Kommentar:", key=f"kommentar_{bruker_id}_{start_indeks}")
 
 if st.button("Lagre evaluering", key=f"lagre_{bruker_id}_{start_indeks}"):
-    valgt_kilde = None if beste_sammendrag == "Ingen" else valgte_sammendrag[sammendrag_valg.index(beste_sammendrag)][0]
     evaluering = {
         'bruker_id': bruker_id,
         'artikkel_indeks': start_indeks,
         'uuid': row['uuid'],
-        'foretrukket_sammendrag': valgt_kilde if valgt_kilde else 'Ingen',
+        'rangeringer': rankings,
         'sammendrag_kilder': [kilde for kilde, _ in valgte_sammendrag],
         'kommentar': kommentar
     }
