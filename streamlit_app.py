@@ -48,8 +48,17 @@ if start_indeks >= len(data):
 row = data.iloc[start_indeks]
 
 st.header(f"Artikkel {start_indeks + 1}/{len(data)}")
-st.subheader("Artikkeltekst:")
-st.write(row['artikkeltekst_clean'])
+st.markdown(f"[Les artikkelen på TV2 sine nettsider her.]({row['url']})", unsafe_allow_html=True)
+
+st.markdown(f"""
+<div class='main-container'>
+    <h1 class='article-title'>{row['title']}</h1>
+    <div class='lead-text'>{row['byline']}</div>
+    <div class='lead-text'>Publisert: {row['creation_date']}</div>
+    <div class='lead-text'>{row['lead_text']}</div>
+    <div class='article-body'>{row['artikkeltekst']}</div>
+</div>
+""", unsafe_allow_html=True)
 
 if f"valgte_sammendrag_{bruker_id}_{start_indeks}" not in st.session_state:
     sammendrag_liste = [(col.replace('prompt_', ''), row[col]) for col in row.index if 'prompt' in col]
@@ -83,3 +92,64 @@ if st.button("Lagre evaluering", key=f"lagre_{bruker_id}_{start_indeks}"):
     
     st.session_state[f'artikkel_indeks_{bruker_id}'] += 1
     st.rerun()
+
+st.markdown("""
+    <style>
+        .main-container {
+            max-width: 600px;  /* Gjør containeren smalere */
+            margin: auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-height: 500px;  /* Begrens høyden */
+            overflow-y: auto;   /* Legg til vertikal scroll */
+        }
+        .article-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .lead-text {
+            font-size: 18px;
+            color: #555;
+            margin-bottom: 20px;
+        }
+        .article-body {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #444;
+            margin-bottom: 30px;
+        }
+        .summary-box {
+            background: white;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        .summary-header {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .evaluation-section {
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .evaluation-button {
+            background-color: #2051b3;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .evaluation-button:hover {
+            background-color: #183c85;
+        }
+    </style>
+""", unsafe_allow_html=True)
