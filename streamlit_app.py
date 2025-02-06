@@ -96,14 +96,14 @@ if st.button("Lagre evaluering", key=f"lagre_{bruker_id}_{start_indeks}"):
 st.markdown("""
     <style>
         .main-container {
-            max-width: 600px;  /* Gjør containeren smalere */
+            max-width: 800px;  /* Gjør containeren smalere */
             margin: auto;
             padding: 20px;
             background-color: #f9f9f9;
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            max-height: 500px;  /* Begrens høyden */
-            overflow-y: auto;   /* Legg til vertikal scroll */
+            max-height: 800px;
+            overflow-y: auto;
         }
         .article-title {
             font-size: 28px;
