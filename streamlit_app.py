@@ -31,6 +31,69 @@ def lagre_evaluering_mongodb(kolleksjon, evaluering):
 def les_datasett(filsti):
     return pd.read_csv(filsti)
 
+undersokelse_svart = evaluering_kolleksjon.find_one({'bruker_id': bruker_id, 'type': 'undersokelse'})
+
+if not undersokelse_svart:
+    st.title("Brukerundersøkelse")
+    st.header("Før vi starter, vennligst svar på noen spørsmål:")
+
+    svar_lengde = st.radio(
+        "Hvor lange mener du at nyhetssammendrag burde være?",
+        options=["1-2 setninger", "Et kort avsnitt", "En mer detaljert oppsummering (flere avsnitt)", "Varierer avhengig av sakens kompleksitet"]
+    )
+
+    svar_presentasjon = st.radio(
+        "Hvordan foretrekker du at nyhetssammendrag presenteres?",
+        options=[
+            "Nøytralt og objektivt, uten vurderinger",
+            "Kort og konsist, med kun de viktigste fakta",
+            "Med en kort vurdering av saken",
+            "Med forklaringer av komplekse begreper eller sammenhenger"
+        ]
+    )
+
+    svar_bakgrunn = st.radio(
+        "Hvor viktig er det at nyhetssammendrag gir bakgrunnsinformasjon og kontekst?",
+        options=["Svært viktig", "Litt viktig", "Ikke viktig"]
+    )
+
+    svar_viktigst = st.radio(
+        "Hva er viktigst for deg?",
+        options=[
+            "At nyhetssammendraget gir meg all relevant informasjon raskt",
+            "At nyhetssammendraget forklarer hvorfor saken er viktig",
+            "At nyhetssammendraget er enkelt å forstå",
+            "At nyhetssammendraget har god språklig kvalitet"
+        ]
+    )
+
+    svar_irriterende = st.radio(
+        "Hva ville irritert deg mest med et nyhetssammendrag?",
+        options=[
+            "Upresis eller unøyaktig informasjon",
+            "For mye tekst eller unødvendige detaljer",
+            "Mangel på kontekst eller bakgrunn",
+            "Et subjektivt eller vinklet språk"
+        ]
+    )
+
+    if st.button("Start evaluering"):
+        undersokelse = {
+            'bruker_id': bruker_id,
+            'type': 'undersokelse',
+            'svar_lengde': svar_lengde,
+            'svar_presentasjon': svar_presentasjon,
+            'svar_bakgrunn': svar_bakgrunn,
+            'svar_viktigst': svar_viktigst,
+            'svar_irriterende': svar_irriterende
+        }
+        evaluering_kolleksjon.insert_one(undersokelse)
+        st.success("Takk for at du svarte! Du kan nå starte evalueringen.")
+        st.rerun()
+
+else:
+    st.write("Takk for at du svarte på undersøkelsen tidligere! Du kan nå fortsette til evalueringen.")
+
 st.title("Evaluering av sammendrag")
 
 filsti = 'data.csv'
