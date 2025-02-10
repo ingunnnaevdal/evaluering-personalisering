@@ -101,7 +101,9 @@ data = les_datasett(filsti)
 
 if f'artikkel_indeks_{bruker_id}' not in st.session_state:
     bruker_evaluering = evaluering_kolleksjon.find_one({'bruker_id': bruker_id}, sort=[('_id', -1)])
-    st.session_state[f'artikkel_indeks_{bruker_id}'] = bruker_evaluering['artikkel_indeks'] + 1 if bruker_evaluering else 0
+    st.session_state[f'artikkel_indeks_{bruker_id}'] = (
+    bruker_evaluering.get('artikkel_indeks', -1) + 1 if bruker_evaluering else 0
+)
 
 start_indeks = st.session_state[f'artikkel_indeks_{bruker_id}']
 if start_indeks >= len(data):
